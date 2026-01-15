@@ -1,5 +1,5 @@
 {
-  "name": "web-ifc",
+  "name": "@ademattos/web-ifc",
   "version": "0.0.75",
   "description": "ifc loading on the web",
   "module": "./web-ifc-api.js",
