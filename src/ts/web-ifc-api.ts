@@ -394,20 +394,14 @@ export class IfcAPI {
     if (WebIFCWasm && this.wasmModule == undefined) {
       let locateFileHandler: LocateFileHandlerFn = (path, prefix) => {
         // when the wasm module requests the wasm file, we redirect to include the user specified path
-        if (path.endsWith(".wasm")) {
-          if (this.isWasmPathAbsolute) {
-            return this.wasmPath + path;
-          }
-
-          return (
-            (currentScriptPath !== undefined ? currentScriptPath : prefix) +
-            this.wasmPath +
-            path
-          );
+        if (this.isWasmPathAbsolute) {
+          return this.wasmPath + path;
         }
-        // otherwise use the default path
+
         return (
-          (currentScriptPath !== undefined ? currentScriptPath : prefix) + path
+          (currentScriptPath !== undefined ? currentScriptPath : prefix) +
+          this.wasmPath +
+          path
         );
       };
 
@@ -468,7 +462,7 @@ export class IfcAPI {
     for (var i = 0; i < SchemaNames.length; i++) {
       if (typeof SchemaNames[i] !== "undefined") {
         for (var j = 0; j < SchemaNames[i].length; j++) {
-          if (SchemaNames[i][j] == schemaName) return i;
+          if (SchemaNames[i][j] == schemaName.toUpperCase()) return i;
         }
       }
     }
@@ -1266,6 +1260,10 @@ export class IfcAPI {
         horizontal: horList,
         vertical: verList,
         curve3D: curve3DList,
+        FlattenedWorldTransformMatrix: this.GetWorldTransformMatrix(
+          modelID,
+          alignment.PlacementExpressId
+        ),
       };
       alignmentList.push(align);
     }
@@ -1295,7 +1293,15 @@ export class IfcAPI {
   GetCoordinationMatrix(modelID: number): Array<number> {
     return this.wasmModule.GetCoordinationMatrix(modelID) as Array<number>;
   }
-
+  GetWorldTransformMatrix(
+    modelID: number,
+    placementExpressId: number
+  ): Array<number> {
+    return this.wasmModule.GetWorldTransformMatrix(
+      modelID,
+      placementExpressId
+    ) as Array<number>;
+  }
   GetVertexArray(ptr: number, size: number): Float32Array {
     return this.getSubArray(this.wasmModule.HEAPF32, ptr, size);
   }

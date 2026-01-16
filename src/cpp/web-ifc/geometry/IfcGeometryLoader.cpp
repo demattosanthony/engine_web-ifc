@@ -193,16 +193,17 @@ namespace webifc::geometry
           double length = glm::distance(point1, previousPoint);
           sumLength += length;
 
+          if (sumLength > maxDistance)
+          {
+              break;
+          }
+
           if (sumLength >= minDistance)
           {
               glm::dmat4 result = BasisCurve.getPlacementAtDistance(sumLength, IfcCurve::CurvePlacementMode::TangentAsZAxis);
               mapPlacements.insert({ sumLength, result });
           }
-          
-          if (sumLength > maxDistance)
-          {
-              break;
-          }
+
           previousPoint = point1;
       }
 
@@ -541,6 +542,7 @@ namespace webifc::geometry
       if (localPlacement != 0 && _loader.IsValidExpressID(localPlacement))
       {
         transform_t = GetLocalPlacement(localPlacement);
+        alignment.PlacementExpressId = localPlacement;
       }
 
       if (_relAggregates.count(expressID) == 1)
@@ -2203,7 +2205,8 @@ namespace webifc::geometry
             }
         }
         curve.arcSegments.push_back(curve.points.size());
-        const int numPointsCurrentArc = _circleSegments;
+        int numPointsCurrentArc = _circleSegments;
+        numPointsCurrentArc = std::max(numPointsCurrentArc, 4);
         double deltaAngle = openingAngleRad / (numPointsCurrentArc - 1);
         double angle = startRad;
         std::vector<glm::dvec3> points;
@@ -2327,8 +2330,6 @@ namespace webifc::geometry
         }
         break;
     }
-
-    
     case schema::IFCGRADIENTCURVE:
     {
         // IfcGradientCurve -----------------------------------------------------------
@@ -3487,6 +3488,7 @@ namespace webifc::geometry
         for (uint32_t i = 0; i < profile.curve.points.size(); i++)
         {
           profile.curve.points[i] = transformation * glm::dvec3(profile.curve.points[i].x, profile.curve.points[i].y, 1);
+          profile.curve.points[i].z = 0;
         }
       }
       else
@@ -4328,10 +4330,24 @@ namespace webifc::geometry
 
     auto projectEID = projects[0];
     _loader.MoveToArgumentOffset(projectEID, 8);
+    auto tk = _loader.GetTokenType();
+    _loader.StepBack();
+    if (tk != parsing::REF)
+    {
+        // IfcProject::UnitsInContext is an optional argument, no error or warning
+        return;
+    }
 
     auto unitsID = _loader.GetRefArgument();
     _loader.MoveToArgumentOffset(unitsID, 0);
 
+    tk = _loader.GetTokenType();
+    _loader.StepBack();
+    if (tk != parsing::SET_BEGIN)
+    {
+        // IfcUnitAssignment::Units vector can be empty. Avoid infinite loop in _loader.GetSetArgument()
+        return;
+    }
     auto unitIds = _loader.GetSetArgument();
 
     for (auto &unitID : unitIds)
